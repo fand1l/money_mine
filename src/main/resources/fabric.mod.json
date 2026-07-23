@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "hryvnia",
+	"version": "${version}",
+	"name": "Hryvnia Economy",
+	"description": "Villager jobs, hryvnia banknotes, bank cards with unique numbers, banker villagers and a full shop system that replaces emerald trading.",
+	"authors": [
+		"fand1l"
+	],
+	"contact": {
+		"sources": "https://github.com/fand1l/money_mine"
+	},
+	"license": "MIT",
+	"icon": "assets/hryvnia/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"dev.maximus.hryvnia.HryvniaMod"
+		],
+		"client": [
+			"dev.maximus.hryvnia.client.HryvniaClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
