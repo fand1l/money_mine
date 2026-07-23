@@ -9,4 +9,10 @@ pluginManagement {
 	}
 }
 
+plugins {
+	// Lets Gradle download a real JDK 25 (with javac) automatically when the
+	// locally installed Java 25 is a JRE-only package.
+	id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 rootProject.name = 'hryvnia'
