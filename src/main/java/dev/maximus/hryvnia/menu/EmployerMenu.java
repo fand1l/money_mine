@@ -149,7 +149,7 @@ public class EmployerMenu extends AbstractContainerMenu {
     private void hire(ServerPlayer player, EconomyState economy) {
         EconomyState.Account account = economy.account(player);
         if (account.job != null && !account.job.equals(professionId())) {
-            player.displayClientMessage(Component.translatable("hryvnia.msg.already_employed", jobName(account.job)), false);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.already_employed", jobName(account.job)));
             playSound(player, false);
             return;
         }
@@ -158,7 +158,7 @@ public class EmployerMenu extends AbstractContainerMenu {
             economy.markDirty();
         }
         yourJob = account.job;
-        player.displayClientMessage(Component.translatable("hryvnia.msg.hired", jobName(professionId())), false);
+        player.sendSystemMessage(Component.translatable("hryvnia.msg.hired", jobName(professionId())));
         playSound(player, true);
     }
 
@@ -168,14 +168,14 @@ public class EmployerMenu extends AbstractContainerMenu {
             account.job = null;
             economy.markDirty();
             yourJob = "";
-            player.displayClientMessage(Component.translatable("hryvnia.msg.quit"), false);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.quit"));
         }
     }
 
     private void sell(ServerPlayer player, EconomyState economy, boolean card) {
         EconomyState.Account account = economy.account(player);
         if (account.job == null || !account.job.equals(professionId())) {
-            player.displayClientMessage(Component.translatable("hryvnia.msg.not_employed"), false);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.not_employed"));
             playSound(player, false);
             return;
         }
@@ -184,7 +184,7 @@ public class EmployerMenu extends AbstractContainerMenu {
             return;
         }
         if (card && !CardHelper.hasOwnCard(player)) {
-            player.displayClientMessage(Component.translatable("hryvnia.msg.no_card"), false);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.no_card"));
             playSound(player, false);
             return;
         }
@@ -201,7 +201,7 @@ public class EmployerMenu extends AbstractContainerMenu {
             }
         }
         if (earned <= 0) {
-            player.displayClientMessage(Component.translatable("hryvnia.msg.no_items"), false);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.no_items"));
             playSound(player, false);
             return;
         }
@@ -211,7 +211,7 @@ public class EmployerMenu extends AbstractContainerMenu {
             CashHelper.giveCash(player, earned);
         }
         this.broadcastChanges();
-        player.displayClientMessage(Component.translatable("hryvnia.msg.paid", String.valueOf(earned)), false);
+        player.sendSystemMessage(Component.translatable("hryvnia.msg.paid", String.valueOf(earned)));
         playSound(player, true);
     }
 
@@ -238,27 +238,27 @@ public class EmployerMenu extends AbstractContainerMenu {
         long price = entry.price;
         if (card) {
             if (!CardHelper.hasOwnCard(player)) {
-                player.displayClientMessage(Component.translatable("hryvnia.msg.no_card"), false);
+                player.sendSystemMessage(Component.translatable("hryvnia.msg.no_card"));
                 playSound(player, false);
                 return;
             }
             if (economy.balance(player.getUUID()) < price) {
-                player.displayClientMessage(Component.translatable("hryvnia.msg.not_enough_balance"), false);
+                player.sendSystemMessage(Component.translatable("hryvnia.msg.not_enough_balance"));
                 playSound(player, false);
                 return;
             }
             economy.addBalance(player.getUUID(), -price);
         } else {
             if (!CashHelper.takeCash(player, price)) {
-                player.displayClientMessage(Component.translatable("hryvnia.msg.not_enough_cash"), false);
+                player.sendSystemMessage(Component.translatable("hryvnia.msg.not_enough_cash"));
                 playSound(player, false);
                 return;
             }
         }
         ItemStack bought = new ItemStack(item, Math.max(1, entry.count));
         player.getInventory().placeItemBackInInventory(bought);
-        player.displayClientMessage(Component.translatable("hryvnia.msg.bought",
-                Component.translatable(item.getDescriptionId()), String.valueOf(price)), false);
+        player.sendSystemMessage(Component.translatable("hryvnia.msg.bought",
+                Component.translatable(item.getDescriptionId()), String.valueOf(price)));
         playSound(player, true);
     }
 

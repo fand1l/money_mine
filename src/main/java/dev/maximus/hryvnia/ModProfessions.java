@@ -1,6 +1,7 @@
 package dev.maximus.hryvnia;
 
 import com.google.common.collect.ImmutableSet;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -20,14 +21,16 @@ public final class ModProfessions {
         // Both POI predicates always fail: bankers can never be created by
         // placing a workstation, so the only bankers are the naturally
         // spawned ones (see VillagerEvents). They keep the profession because
-        // they are given villager XP on conversion.
+        // they are given villager XP on conversion. No vanilla trade sets —
+        // all banker interaction goes through our own menu.
         Registry.register(BuiltInRegistries.VILLAGER_PROFESSION, BANKER_KEY, new VillagerProfession(
                 Component.translatable("entity.hryvnia.banker"),
                 holder -> false,
                 holder -> false,
                 ImmutableSet.of(),
                 ImmutableSet.of(),
-                null));
+                null,
+                Int2ObjectMaps.emptyMap()));
     }
 
     public static Holder<VillagerProfession> bankerHolder() {

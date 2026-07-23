@@ -116,8 +116,12 @@ public class EconomyState {
 
     public Account account(ServerPlayer player) {
         Account account = account(player.getUUID());
-        account.name = player.getGameProfile().getName();
+        account.name = player.getName().getString();
         return account;
+    }
+
+    public MinecraftServer server() {
+        return server;
     }
 
     public long balance(UUID uuid) {

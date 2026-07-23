@@ -1,14 +1,17 @@
 package dev.maximus.hryvnia.command;
 
 import com.mojang.brigadier.arguments.LongArgumentType;
+import dev.maximus.hryvnia.HryvniaMod;
 import dev.maximus.hryvnia.economy.EconomyState;
 import dev.maximus.hryvnia.economy.HryvniaConfig;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.permission.v1.PermissionPredicates;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.PermissionLevel;
 
 /**
  * The only command in the mod, admin-only (everything player-facing goes
@@ -21,7 +24,7 @@ public final class HryvniaCommand {
     public static void register() {
         CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, selection) -> {
             dispatcher.register(Commands.literal("hryvnia")
-                    .requires(source -> source.hasPermission(2))
+                    .requires(PermissionPredicates.require(HryvniaMod.id("admin"), PermissionLevel.ADMINS))
                     .then(Commands.literal("reload").executes(context -> {
                         HryvniaConfig.load();
                         context.getSource().sendSuccess(() -> Component.translatable("hryvnia.msg.config_reloaded"), true);
@@ -33,7 +36,7 @@ public final class HryvniaCommand {
                                         ServerPlayer target = EntityArgument.getPlayer(context, "player");
                                         long balance = balanceOf(target);
                                         context.getSource().sendSuccess(() -> Component.literal(
-                                                target.getGameProfile().getName() + ": " + balance + " ₴"), false);
+                                                target.getName().getString() + ": " + balance + " ₴"), false);
                                         return (int) Math.min(Integer.MAX_VALUE, balance);
                                     })
                                     .then(Commands.literal("set")
@@ -73,6 +76,6 @@ public final class HryvniaCommand {
     private static void sendBalance(CommandSourceStack source, ServerPlayer target) {
         long balance = balanceOf(target);
         source.sendSuccess(() -> Component.literal(
-                target.getGameProfile().getName() + ": " + balance + " ₴"), true);
+                target.getName().getString() + ": " + balance + " ₴"), true);
     }
 }

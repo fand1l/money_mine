@@ -8,12 +8,12 @@ import dev.maximus.hryvnia.menu.EmployerMenu;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
 
@@ -22,13 +22,12 @@ import java.util.Set;
 /**
  * Two responsibilities:
  * 1. Naturally spawned jobless adult villagers have a configurable chance to
- *    become bankers, exactly once per villager (tracked with a command tag).
- *    Bred villagers never become bankers, keeping bankers scarce.
+ *    become bankers. Only first-time spawns with a natural spawn reason roll,
+ *    so bred or summoned villagers never become bankers — bankers stay scarce.
  * 2. Right-clicking villagers opens our own economy menus instead of vanilla
  *    trading, which is what makes emeralds worthless.
  */
 public final class VillagerEvents {
-    private static final String CHECKED_TAG = "hryvnia_checked";
     /** Spawn reasons that count as "natural" for banker conversion. */
     private static final Set<String> NATURAL_REASONS = Set.of("NATURAL", "CHUNK_GENERATION", "STRUCTURE", "EVENT");
 
@@ -40,22 +39,18 @@ public final class VillagerEvents {
             if (!(entity instanceof Villager villager)) {
                 return;
             }
-            if (villager.getTags().contains(CHECKED_TAG)) {
+            // A fresh spawn fires ENTITY_LOAD exactly once, so no extra
+            // once-per-villager bookkeeping is needed.
+            if (villager.isLoadedFromDisk()) {
                 return;
             }
-            villager.addTag(CHECKED_TAG);
             if (villager.isBaby() || !professionId(villager).equals("minecraft:none")) {
                 return;
             }
-            if (!villager.isLoadedFromDisk()) {
-                EntitySpawnReason reason = villager.spawnReason();
-                if (reason == null || !NATURAL_REASONS.contains(reason.name())) {
-                    return;
-                }
+            EntitySpawnReason reason = villager.spawnReason();
+            if (reason == null || !NATURAL_REASONS.contains(reason.name())) {
+                return;
             }
-            // Villagers loaded from disk without our tag come from worlds that
-            // existed before the mod was installed; give them the same one-time
-            // roll so old villages can have bankers too.
             if (level.getRandom().nextDouble() < HryvniaConfig.INSTANCE.bankerSpawnChance) {
                 makeBanker(villager);
             }
@@ -69,14 +64,15 @@ public final class VillagerEvents {
                 if (villager.isBaby() || !villager.isAlive()) {
                     return InteractionResult.PASS;
                 }
-                if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+                // Only a ServerPlayer means we are on the logical server.
+                if (player instanceof ServerPlayer serverPlayer) {
                     open(serverPlayer, villager);
                 }
                 return InteractionResult.SUCCESS;
             }
-            if (entity.getType() == EntityType.WANDERING_TRADER) {
-                if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-                    serverPlayer.displayClientMessage(Component.translatable("hryvnia.msg.wandering"), false);
+            if (BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString().equals("minecraft:wandering_trader")) {
+                if (player instanceof ServerPlayer serverPlayer) {
+                    serverPlayer.sendSystemMessage(Component.translatable("hryvnia.msg.wandering"));
                 }
                 return InteractionResult.SUCCESS;
             }
@@ -94,7 +90,7 @@ public final class VillagerEvents {
         if (HryvniaConfig.INSTANCE.professionEconomy(professionId) != null) {
             EmployerMenu.open(player, villager, professionId);
         } else {
-            player.displayClientMessage(Component.translatable("hryvnia.msg.jobless_villager"), true);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.jobless_villager"));
         }
     }
 

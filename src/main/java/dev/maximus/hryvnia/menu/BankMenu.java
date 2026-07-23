@@ -147,13 +147,13 @@ public class BankMenu extends AbstractContainerMenu {
             }
         }
         if (total <= 0) {
-            player.displayClientMessage(Component.translatable("hryvnia.msg.nothing_to_deposit"), false);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.nothing_to_deposit"));
             playSound(player, false);
             return;
         }
         economy.addBalance(player.getUUID(), total);
         this.broadcastChanges();
-        player.displayClientMessage(Component.translatable("hryvnia.msg.deposited", String.valueOf(total)), false);
+        player.sendSystemMessage(Component.translatable("hryvnia.msg.deposited", String.valueOf(total)));
         playSound(player, true);
     }
 
@@ -162,26 +162,26 @@ public class BankMenu extends AbstractContainerMenu {
             return;
         }
         if (economy.balance(player.getUUID()) < amount) {
-            player.displayClientMessage(Component.translatable("hryvnia.msg.not_enough_balance"), false);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.not_enough_balance"));
             playSound(player, false);
             return;
         }
         economy.addBalance(player.getUUID(), -amount);
         CashHelper.giveCash(player, amount);
-        player.displayClientMessage(Component.translatable("hryvnia.msg.withdrawn", String.valueOf(amount)), false);
+        player.sendSystemMessage(Component.translatable("hryvnia.msg.withdrawn", String.valueOf(amount)));
         playSound(player, true);
     }
 
     private void issueCard(ServerPlayer player, EconomyState economy) {
         if (CardHelper.hasOwnCard(player)) {
-            player.displayClientMessage(Component.translatable("hryvnia.msg.have_card"), false);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.have_card"));
             playSound(player, false);
             return;
         }
         String number = economy.getOrCreateCard(player);
-        ItemStack card = CardHelper.createCard(number, player.getUUID(), player.getGameProfile().getName());
+        ItemStack card = CardHelper.createCard(number, player.getUUID(), player.getName().getString());
         player.getInventory().placeItemBackInInventory(card);
-        player.displayClientMessage(Component.translatable("hryvnia.msg.card_issued", number), false);
+        player.sendSystemMessage(Component.translatable("hryvnia.msg.card_issued", number));
         playSound(player, true);
     }
 
@@ -191,35 +191,35 @@ public class BankMenu extends AbstractContainerMenu {
         }
         String number = EconomyState.normalizeCardInput(target);
         if (number == null) {
-            player.displayClientMessage(Component.translatable("hryvnia.msg.card_not_found"), false);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.card_not_found"));
             playSound(player, false);
             return;
         }
         EconomyState.TransferResult result = economy.transfer(player, number, amount);
         switch (result) {
             case OK -> {
-                player.displayClientMessage(Component.translatable("hryvnia.msg.transfer_sent",
-                        String.valueOf(amount), number), false);
+                player.sendSystemMessage(Component.translatable("hryvnia.msg.transfer_sent",
+                        String.valueOf(amount), number));
                 UUID recipient = economy.ownerOfCard(number);
-                if (recipient != null && player.getServer() != null) {
-                    ServerPlayer online = player.getServer().getPlayerList().getPlayer(recipient);
+                if (recipient != null && economy.server() != null) {
+                    ServerPlayer online = economy.server().getPlayerList().getPlayer(recipient);
                     if (online != null) {
-                        online.displayClientMessage(Component.translatable("hryvnia.msg.transfer_received",
-                                String.valueOf(amount), player.getGameProfile().getName()), false);
+                        online.sendSystemMessage(Component.translatable("hryvnia.msg.transfer_received",
+                                String.valueOf(amount), player.getName().getString()));
                     }
                 }
                 playSound(player, true);
             }
             case NO_SUCH_CARD -> {
-                player.displayClientMessage(Component.translatable("hryvnia.msg.card_not_found"), false);
+                player.sendSystemMessage(Component.translatable("hryvnia.msg.card_not_found"));
                 playSound(player, false);
             }
             case NOT_ENOUGH_MONEY -> {
-                player.displayClientMessage(Component.translatable("hryvnia.msg.not_enough_balance"), false);
+                player.sendSystemMessage(Component.translatable("hryvnia.msg.not_enough_balance"));
                 playSound(player, false);
             }
             case SELF -> {
-                player.displayClientMessage(Component.translatable("hryvnia.msg.transfer_self"), false);
+                player.sendSystemMessage(Component.translatable("hryvnia.msg.transfer_self"));
                 playSound(player, false);
             }
         }
