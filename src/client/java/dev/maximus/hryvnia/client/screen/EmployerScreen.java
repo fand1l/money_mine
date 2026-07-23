@@ -45,9 +45,7 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
     private String yourJob;
 
     public EmployerScreen(EmployerMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
-        this.imageWidth = 176;
-        this.imageHeight = 222;
+        super(menu, inventory, title, 176, 222);
         this.yourJob = menu.data().yourJob();
         this.inventoryLabelY = -1000; // hidden, the shop list needs the room
     }

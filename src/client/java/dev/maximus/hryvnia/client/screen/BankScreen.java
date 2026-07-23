@@ -28,9 +28,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     private EditBox transferAmount;
 
     public BankScreen(BankMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
-        this.imageWidth = 176;
-        this.imageHeight = 222;
+        super(menu, inventory, title, 176, 222);
         ClientEconomy.balance = menu.data().balance();
     }
 
@@ -46,7 +44,6 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         withdrawAmount = new EditBox(font, leftPos + 8, topPos + 66, 58, 14,
                 Component.translatable("hryvnia.gui.amount_hint"));
         withdrawAmount.setMaxLength(10);
-        withdrawAmount.setFilter(text -> text.matches("[0-9]*"));
         addRenderableWidget(withdrawAmount);
 
         addRenderableWidget(new SimpleButton(leftPos + 70, topPos + 65, 46, 16,
@@ -67,13 +64,11 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         transferCard = new EditBox(font, leftPos + 8, topPos + 96, 160, 14,
                 Component.translatable("hryvnia.gui.card_number_hint"));
         transferCard.setMaxLength(19);
-        transferCard.setFilter(text -> text.matches("[0-9 ]*"));
         addRenderableWidget(transferCard);
 
         transferAmount = new EditBox(font, leftPos + 8, topPos + 114, 58, 14,
                 Component.translatable("hryvnia.gui.amount_hint"));
         transferAmount.setMaxLength(10);
-        transferAmount.setFilter(text -> text.matches("[0-9]*"));
         addRenderableWidget(transferAmount);
 
         addRenderableWidget(new SimpleButton(leftPos + 70, topPos + 113, 98, 16,
