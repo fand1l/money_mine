@@ -100,7 +100,7 @@ public final class VillagerEvents {
                 .orElse("minecraft:none");
     }
 
-    private static void makeBanker(Villager villager) {
+    public static void makeBanker(Villager villager) {
         villager.setVillagerData(villager.getVillagerData().withProfession(ModProfessions.bankerHolder()));
         // Villagers with trade XP never lose their profession, locking the banker in.
         villager.setVillagerXp(10);

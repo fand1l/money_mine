@@ -33,10 +33,11 @@ import java.util.UUID;
 public class BankMenu extends AbstractContainerMenu {
     public static final int DEPOSIT_SLOTS = 9;
 
-    public record BankData(long balance, String cardNumber) {
+    public record BankData(long balance, String cardNumber, int emeraldScrap) {
         public static final StreamCodec<RegistryFriendlyByteBuf, BankData> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_LONG, BankData::balance,
                 ByteBufCodecs.STRING_UTF8, BankData::cardNumber,
+                ByteBufCodecs.VAR_INT, BankData::emeraldScrap,
                 BankData::new);
     }
 
@@ -240,7 +241,8 @@ public class BankMenu extends AbstractContainerMenu {
             return;
         }
         EconomyState.Account account = economy.account(player);
-        BankData data = new BankData(account.balance, account.card != null ? account.card : "");
+        BankData data = new BankData(account.balance, account.card != null ? account.card : "",
+                HryvniaConfig.INSTANCE.emeraldScrapValue);
 
         player.openMenu(new ExtendedMenuProvider<BankData>() {
             @Override

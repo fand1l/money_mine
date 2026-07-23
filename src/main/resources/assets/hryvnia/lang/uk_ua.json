@@ -1,6 +1,5 @@
 {
   "itemGroup.hryvnia": "Гривнева економіка",
-
   "item.hryvnia.banknote_1": "Купюра 1 ₴",
   "item.hryvnia.banknote_2": "Купюра 2 ₴",
   "item.hryvnia.banknote_5": "Купюра 5 ₴",
@@ -13,9 +12,7 @@
   "item.hryvnia.banknote_1000": "Купюра 1000 ₴",
   "item.hryvnia.banknote_2000": "Купюра 2000 ₴",
   "item.hryvnia.bank_card": "Банківська картка",
-
   "entity.hryvnia.banker": "Банкір",
-
   "hryvnia.gui.sell": "Здати товар",
   "hryvnia.gui.sell_hint": "Здача товару:",
   "hryvnia.gui.hire": "Найнятись",
@@ -26,7 +23,7 @@
   "hryvnia.gui.buy": "Купити",
   "hryvnia.gui.shop": "Магазин",
   "hryvnia.gui.rates_header": "Приймає за роботу (₴ за шт.):",
-  "hryvnia.gui.no_job": "Ви безробітний",
+  "hryvnia.gui.no_job": "Без роботи",
   "hryvnia.gui.your_job": "Робота: %s",
   "hryvnia.gui.deposit": "Покласти",
   "hryvnia.gui.deposit_hint": "Депозит (купюри та смарагди):",
@@ -37,12 +34,10 @@
   "hryvnia.gui.amount_hint": "Сума",
   "hryvnia.gui.card_number_hint": "Номер картки",
   "hryvnia.gui.balance": "Баланс: %s ₴",
-
   "hryvnia.tooltip.total": "Разом: %s ₴",
   "hryvnia.tooltip.currency": "Гривня — валюта села",
   "hryvnia.tooltip.owner": "Власник: %s",
   "hryvnia.tooltip.balance": "Баланс: %s ₴",
-
   "hryvnia.msg.wandering": "Мандрівний торговець знизує плечима — смарагди тут більше нічого не варті.",
   "hryvnia.msg.jobless_villager": "Цей селянин безробітний — ні роботи, ні магазину.",
   "hryvnia.msg.already_employed": "Ви вже працюєте (%s). Спершу звільніться.",
@@ -64,5 +59,12 @@
   "hryvnia.msg.transfer_sent": "Переказ %s ₴ на картку %s виконано.",
   "hryvnia.msg.transfer_received": "Вам переказали %s ₴ (від %s).",
   "hryvnia.msg.transfer_self": "Не можна переказати самому собі.",
-  "hryvnia.msg.config_reloaded": "Конфіг hryvnia.json перезавантажено."
+  "hryvnia.msg.config_reloaded": "Конфіг hryvnia.json перезавантажено.",
+  "hryvnia.gui.sell_estimate": "Здача товару (≈ %s ₴):",
+  "hryvnia.gui.deposit_estimate": "Депозит (≈ %s ₴):",
+  "hryvnia.gui.wallet": "Готівка: %s ₴",
+  "hryvnia.gui.your_card": "Ваша картка: %s",
+  "hryvnia.gui.no_card_yet": "Картки ще немає — натисніть, щоб отримати",
+  "hryvnia.msg.banker_created": "Найближчого селянина перетворено на банкіра.",
+  "hryvnia.msg.no_villager_nearby": "Поблизу немає дорослого селянина."
 }

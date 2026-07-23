@@ -1,6 +1,5 @@
 {
   "itemGroup.hryvnia": "Hryvnia Economy",
-
   "item.hryvnia.banknote_1": "₴1 Banknote",
   "item.hryvnia.banknote_2": "₴2 Banknote",
   "item.hryvnia.banknote_5": "₴5 Banknote",
@@ -13,9 +12,7 @@
   "item.hryvnia.banknote_1000": "₴1000 Banknote",
   "item.hryvnia.banknote_2000": "₴2000 Banknote",
   "item.hryvnia.bank_card": "Bank Card",
-
   "entity.hryvnia.banker": "Banker",
-
   "hryvnia.gui.sell": "Hand in",
   "hryvnia.gui.sell_hint": "Hand in produce:",
   "hryvnia.gui.hire": "Take job",
@@ -26,7 +23,7 @@
   "hryvnia.gui.buy": "Buy",
   "hryvnia.gui.shop": "Shop",
   "hryvnia.gui.rates_header": "Accepted for work (₴ each):",
-  "hryvnia.gui.no_job": "You are unemployed",
+  "hryvnia.gui.no_job": "Unemployed",
   "hryvnia.gui.your_job": "Job: %s",
   "hryvnia.gui.deposit": "Deposit",
   "hryvnia.gui.deposit_hint": "Deposit (banknotes & emeralds):",
@@ -37,12 +34,10 @@
   "hryvnia.gui.amount_hint": "Amount",
   "hryvnia.gui.card_number_hint": "Card number",
   "hryvnia.gui.balance": "Balance: %s ₴",
-
   "hryvnia.tooltip.total": "Total: %s ₴",
   "hryvnia.tooltip.currency": "Hryvnia — the village currency",
   "hryvnia.tooltip.owner": "Owner: %s",
   "hryvnia.tooltip.balance": "Balance: %s ₴",
-
   "hryvnia.msg.wandering": "The wandering trader shrugs — emeralds are worthless here now.",
   "hryvnia.msg.jobless_villager": "This villager is unemployed — no work, no shop.",
   "hryvnia.msg.already_employed": "You already work as %s. Quit first.",
@@ -64,5 +59,12 @@
   "hryvnia.msg.transfer_sent": "Sent ₴%s to card %s.",
   "hryvnia.msg.transfer_received": "You received ₴%s (from %s).",
   "hryvnia.msg.transfer_self": "You cannot transfer to yourself.",
-  "hryvnia.msg.config_reloaded": "hryvnia.json config reloaded."
+  "hryvnia.msg.config_reloaded": "hryvnia.json config reloaded.",
+  "hryvnia.gui.sell_estimate": "Hand in produce (≈ ₴%s):",
+  "hryvnia.gui.deposit_estimate": "Deposit (≈ ₴%s):",
+  "hryvnia.gui.wallet": "Cash: ₴%s",
+  "hryvnia.gui.your_card": "Your card: %s",
+  "hryvnia.gui.no_card_yet": "No card yet — click to get one",
+  "hryvnia.msg.banker_created": "Nearest villager is now a banker.",
+  "hryvnia.msg.no_villager_nearby": "No adult villager nearby."
 }

@@ -1,6 +1,8 @@
 package dev.maximus.hryvnia.client.screen;
 
 import dev.maximus.hryvnia.HryvniaMod;
+import dev.maximus.hryvnia.ModItems;
+import dev.maximus.hryvnia.client.ClientEconomy;
 import dev.maximus.hryvnia.menu.EmployerMenu;
 import dev.maximus.hryvnia.network.ModPayloads;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -13,21 +15,24 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Screen for working villagers: hand produce in for pay, hire/quit, and a
- * paginated shop. All texts are drawn during background extraction; actions
- * go to the server as EmployerActionPayload.
+ * paginated shop rendered as item icons (hover an icon for the name). All
+ * actions go to the server as EmployerActionPayload.
  */
 public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
     private static final Identifier TEXTURE = HryvniaMod.id("textures/gui/employer_bg.png");
-    private static final int ROWS_PER_PAGE = 5;
-    private static final int ROW_HEIGHT = 13;
-    private static final int FIRST_ROW_Y = 78;
+    private static final int ROWS_PER_PAGE = 4;
+    private static final int ROW_HEIGHT = 16;
+    private static final int FIRST_ROW_Y = 74;
 
     private static final int COLOR_DARK = 0xFF3F3F3F;
     private static final int COLOR_ACCENT = 0xFF2E6B2E;
@@ -44,10 +49,31 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
     /** Local view of the player's job, optimistically updated on clicks. */
     private String yourJob;
 
+    /** Pre-resolved stacks for the shop entries, aligned by index. */
+    private final List<ItemStack> shopStacks = new ArrayList<>();
+    /** item id -> pay rate, for the live sell estimate. */
+    private final Map<String, Integer> rateByItem = new HashMap<>();
+
     public EmployerScreen(EmployerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, 176, 222);
         this.yourJob = menu.data().yourJob();
         this.inventoryLabelY = -1000; // hidden, the shop list needs the room
+
+        for (EmployerMenu.PriceEntry entry : menu.data().shop()) {
+            shopStacks.add(stackFor(entry));
+        }
+        for (EmployerMenu.PriceEntry entry : menu.data().rates()) {
+            rateByItem.put(entry.itemId(), entry.price());
+        }
+    }
+
+    private static ItemStack stackFor(EmployerMenu.PriceEntry entry) {
+        Identifier identifier = Identifier.tryParse(entry.itemId());
+        Item item = identifier != null ? BuiltInRegistries.ITEM.getValue(identifier) : Items.AIR;
+        if (item == Items.AIR) {
+            item = Items.BARRIER;
+        }
+        return new ItemStack(item, Math.max(1, entry.count()));
     }
 
     @Override
@@ -61,7 +87,7 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
                         ModPayloads.EmployerActionPayload.SELL, 0, cardMode))));
         sellButton.setTooltip(Tooltip.create(ratesTooltip()));
 
-        jobButton = addRenderableWidget(new SimpleButton(leftPos + 112, topPos + 46, 56, 16,
+        jobButton = addRenderableWidget(new SimpleButton(leftPos + 110, topPos + 46, 58, 16,
                 Component.empty(), button -> onJobButton()));
 
         payButton = addRenderableWidget(new SimpleButton(leftPos + 8, topPos + 60, 86, 14,
@@ -70,12 +96,12 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
             refresh();
         }));
 
-        pagePrev = addRenderableWidget(new SimpleButton(leftPos + 140, topPos + 60, 12, 14,
+        pagePrev = addRenderableWidget(new SimpleButton(leftPos + 98, topPos + 60, 14, 14,
                 Component.literal("<"), button -> {
             page--;
             refresh();
         }));
-        pageNext = addRenderableWidget(new SimpleButton(leftPos + 156, topPos + 60, 12, 14,
+        pageNext = addRenderableWidget(new SimpleButton(leftPos + 154, topPos + 60, 14, 14,
                 Component.literal(">"), button -> {
             page++;
             refresh();
@@ -84,7 +110,7 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
         for (int row = 0; row < ROWS_PER_PAGE; row++) {
             final int rowIndex = row;
             SimpleButton buy = addRenderableWidget(new SimpleButton(
-                    leftPos + 132, topPos + FIRST_ROW_Y + row * ROW_HEIGHT - 1, 36, 12,
+                    leftPos + 130, topPos + FIRST_ROW_Y + row * ROW_HEIGHT + 1, 38, 14,
                     Component.translatable("hryvnia.gui.buy"),
                     button -> ClientPlayNetworking.send(new ModPayloads.EmployerActionPayload(
                             ModPayloads.EmployerActionPayload.BUY, page * ROWS_PER_PAGE + rowIndex, cardMode))));
@@ -113,6 +139,8 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
         page = Math.max(0, Math.min(page, pages - 1));
         pagePrev.active = page > 0;
         pageNext.active = page < pages - 1;
+        pagePrev.visible = pages > 1;
+        pageNext.visible = pages > 1;
 
         for (int row = 0; row < ROWS_PER_PAGE; row++) {
             buyButtons.get(row).visible = page * ROWS_PER_PAGE + row < entries;
@@ -155,6 +183,35 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
         return Component.literal(id);
     }
 
+    /** Live payout estimate for whatever is in the sell slots right now. */
+    private long sellEstimate() {
+        long total = 0;
+        for (int i = 0; i < EmployerMenu.SELL_SLOTS; i++) {
+            ItemStack stack = menu.slots.get(i).getItem();
+            if (stack.isEmpty()) {
+                continue;
+            }
+            Integer rate = rateByItem.get(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+            if (rate != null) {
+                total += (long) rate * stack.getCount();
+            }
+        }
+        return total;
+    }
+
+    /** Cash the player is carrying, counted from the synced menu slots. */
+    private long cashOnHand() {
+        long total = 0;
+        for (int i = EmployerMenu.SELL_SLOTS; i < menu.slots.size(); i++) {
+            ItemStack stack = menu.slots.get(i).getItem();
+            Integer value = ModItems.BANKNOTE_VALUES.get(stack.getItem());
+            if (value != null) {
+                total += (long) value * stack.getCount();
+            }
+        }
+        return total;
+    }
+
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         extractBackground(graphics, mouseX, mouseY, delta);
@@ -168,29 +225,55 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
         int y = (height - imageHeight) / 2;
         graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, x, y, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight);
 
-        graphics.text(font, Component.translatable("hryvnia.gui.sell_hint").getString(), x + 8, y + 19, COLOR_DARK, false);
+        // Sell header with a live payout estimate.
+        long estimate = sellEstimate();
+        String sellHeader = estimate > 0
+                ? Component.translatable("hryvnia.gui.sell_estimate", String.valueOf(estimate)).getString()
+                : Component.translatable("hryvnia.gui.sell_hint").getString();
+        graphics.text(font, sellHeader, x + 8, y + 18, estimate > 0 ? COLOR_ACCENT : COLOR_DARK, false);
 
         String jobLine = yourJob.isEmpty()
                 ? Component.translatable("hryvnia.gui.no_job").getString()
                 : Component.translatable("hryvnia.gui.your_job",
                         EmployerMenu.professionDisplayName(yourJob).getString()).getString();
-        graphics.text(font, trim(jobLine, 100), x + 8, y + 50, COLOR_DARK, false);
+        graphics.text(font, trim(jobLine, 98), x + 8, y + 50, COLOR_DARK, false);
 
+        // Wallet tooltip on the payment toggle, updated live.
+        payButton.setTooltip(Tooltip.create(
+                Component.translatable("hryvnia.gui.wallet", String.valueOf(cashOnHand()))
+                        .append(Component.literal("\n"))
+                        .append(Component.translatable("hryvnia.gui.balance", String.valueOf(ClientEconomy.balance)))));
+
+        // Pager: page number centered between the arrow buttons.
         List<EmployerMenu.PriceEntry> shop = menu.data().shop();
         int pages = Math.max(1, (shop.size() + ROWS_PER_PAGE - 1) / ROWS_PER_PAGE);
-        String header = Component.translatable("hryvnia.gui.shop").getString() + " " + (page + 1) + "/" + pages;
-        graphics.text(font, header, x + 98, y + 63, COLOR_DARK, false);
+        if (pages > 1) {
+            String pageText = (page + 1) + "/" + pages;
+            graphics.text(font, pageText, x + 133 - font.width(pageText) / 2, y + 63, COLOR_DARK, false);
+        }
 
+        // Shop rows: icon (with vanilla count decoration), price, buy button.
         for (int row = 0; row < ROWS_PER_PAGE; row++) {
             int index = page * ROWS_PER_PAGE + row;
             if (index >= shop.size()) {
                 break;
             }
             EmployerMenu.PriceEntry entry = shop.get(index);
-            String line = (entry.count() > 1 ? entry.count() + "× " : "") + itemName(entry.itemId()).getString();
-            graphics.text(font, trim(line, 82), x + 8, y + FIRST_ROW_Y + row * ROW_HEIGHT + 1, COLOR_DARK, false);
-            String price = entry.price() + "₴";
-            graphics.text(font, price, x + 128 - font.width(price), y + FIRST_ROW_Y + row * ROW_HEIGHT + 1, COLOR_ACCENT, false);
+            ItemStack stack = shopStacks.get(index);
+            int iconX = x + 8;
+            int iconY = y + FIRST_ROW_Y + row * ROW_HEIGHT;
+            graphics.item(stack, iconX, iconY);
+            graphics.itemDecorations(font, stack, iconX, iconY);
+
+            String price = entry.price() + " ₴";
+            graphics.text(font, price, x + 126 - font.width(price), iconY + 4, COLOR_ACCENT, false);
+
+            if (mouseX >= iconX && mouseX < iconX + 16 && mouseY >= iconY && mouseY < iconY + 16) {
+                Component hover = itemName(entry.itemId()).copy()
+                        .append(Component.literal(entry.count() > 1 ? " ×" + entry.count() : ""))
+                        .append(Component.literal(" — " + entry.price() + " ₴"));
+                graphics.setTooltipForNextFrame(font, hover, mouseX, mouseY);
+            }
         }
     }
 

@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.LongArgumentType;
 import dev.maximus.hryvnia.HryvniaMod;
 import dev.maximus.hryvnia.economy.EconomyState;
 import dev.maximus.hryvnia.economy.HryvniaConfig;
+import dev.maximus.hryvnia.event.VillagerEvents;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.permission.v1.PermissionPredicates;
 import net.minecraft.commands.CommandSourceStack;
@@ -12,10 +13,14 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.PermissionLevel;
+import net.minecraft.world.entity.npc.villager.Villager;
+
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * The only command in the mod, admin-only (everything player-facing goes
- * through villagers): /hryvnia reload | balance <player> [set|add <amount>].
+ * through villagers): /hryvnia reload | banker | balance <player> [set|add].
  */
 public final class HryvniaCommand {
     private HryvniaCommand() {
@@ -28,6 +33,21 @@ public final class HryvniaCommand {
                     .then(Commands.literal("reload").executes(context -> {
                         HryvniaConfig.load();
                         context.getSource().sendSuccess(() -> Component.translatable("hryvnia.msg.config_reloaded"), true);
+                        return 1;
+                    }))
+                    .then(Commands.literal("banker").executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayerOrException();
+                        List<Villager> villagers = player.level().getEntitiesOfClass(Villager.class,
+                                player.getBoundingBox().inflate(8.0), villager -> villager.isAlive() && !villager.isBaby());
+                        Villager nearest = villagers.stream()
+                                .min(Comparator.comparingDouble(player::distanceToSqr))
+                                .orElse(null);
+                        if (nearest == null) {
+                            context.getSource().sendFailure(Component.translatable("hryvnia.msg.no_villager_nearby"));
+                            return 0;
+                        }
+                        VillagerEvents.makeBanker(nearest);
+                        context.getSource().sendSuccess(() -> Component.translatable("hryvnia.msg.banker_created"), true);
                         return 1;
                     }))
                     .then(Commands.literal("balance")
