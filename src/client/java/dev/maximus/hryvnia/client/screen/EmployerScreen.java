@@ -25,9 +25,10 @@ import java.util.Map;
 
 /**
  * Screen for working villagers: hand produce in for pay, hire/quit, and a
- * paginated shop. Each shop row shows an item icon plus a −/+ stepper set
- * (1/5/10/16/32/64) flanking a buy button that carries the total price; steps
- * that would exceed the item's stack size (or drop below 1) are disabled.
+ * paginated shop. Each shop row shows an item icon plus a stepper set flanking
+ * a buy button that carries the total price: min −32 −16 −10 −5 −1 [buy] +1 +5
+ * +10 +16 +32 max. Steps that would exceed the item's stack size (or drop below
+ * 1) are disabled; min jumps to 1 and max jumps to a full stack.
  */
 public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
     private static final Identifier TEXTURE = HryvniaMod.id("textures/gui/employer_bg.png");
@@ -35,15 +36,18 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
     private static final int ROW_HEIGHT = 14;
     private static final int FIRST_ROW_Y = 80;
     private static final int STEP_W = 20;
-    private static final int[] MINUS_STEPS = {64, 32, 16, 10, 5, 1};
-    private static final int[] PLUS_STEPS = {1, 5, 10, 16, 32, 64};
+    // The outermost slot on each side is min/max; these are the inner steps.
+    private static final int[] MINUS_STEPS = {32, 16, 10, 5, 1};
+    private static final int[] PLUS_STEPS = {1, 5, 10, 16, 32};
 
     private static final int COLOR_DARK = 0xFF3F3F3F;
     private static final int COLOR_ACCENT = 0xFF2E6B2E;
 
     private final List<SimpleButton> buyButtons = new ArrayList<>();
-    private final SimpleButton[][] minusButtons = new SimpleButton[ROWS_PER_PAGE][MINUS_STEPS.length];
-    private final SimpleButton[][] plusButtons = new SimpleButton[ROWS_PER_PAGE][PLUS_STEPS.length];
+    // Slot 0 is the min button, slots 1..5 are the MINUS_STEPS.
+    private final SimpleButton[][] minusButtons = new SimpleButton[ROWS_PER_PAGE][MINUS_STEPS.length + 1];
+    // Slots 0..4 are the PLUS_STEPS, slot 5 is the max button.
+    private final SimpleButton[][] plusButtons = new SimpleButton[ROWS_PER_PAGE][PLUS_STEPS.length + 1];
     private SimpleButton sellButton;
     private SimpleButton jobButton;
     private SimpleButton payButton;
@@ -101,8 +105,11 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
     }
 
     private void adjust(int index, int delta) {
-        int next = Math.max(1, Math.min(maxStack(index), quantity(index) + delta));
-        quantities.put(index, next);
+        setQty(index, quantity(index) + delta);
+    }
+
+    private void setQty(int index, int value) {
+        quantities.put(index, Math.max(1, Math.min(maxStack(index), value)));
         refresh();
     }
 
@@ -141,10 +148,14 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
             final int rowIndex = row;
             int rowY = topPos + FIRST_ROW_Y + row * ROW_HEIGHT;
 
+            // Left group: min, then the descending minus steps.
+            minusButtons[row][0] = addRenderableWidget(new SimpleButton(
+                    leftPos + 26, rowY, STEP_W, 13, Component.literal("min"),
+                    button -> setQty(page * ROWS_PER_PAGE + rowIndex, 1)));
             for (int i = 0; i < MINUS_STEPS.length; i++) {
                 final int step = MINUS_STEPS[i];
-                minusButtons[row][i] = addRenderableWidget(new SimpleButton(
-                        leftPos + 26 + i * STEP_W, rowY, STEP_W, 13,
+                minusButtons[row][i + 1] = addRenderableWidget(new SimpleButton(
+                        leftPos + 26 + (i + 1) * STEP_W, rowY, STEP_W, 13,
                         Component.literal("-" + step),
                         button -> adjust(page * ROWS_PER_PAGE + rowIndex, -step)));
             }
@@ -158,6 +169,7 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
                     }));
             buyButtons.add(buy);
 
+            // Right group: the ascending plus steps, then max.
             for (int i = 0; i < PLUS_STEPS.length; i++) {
                 final int step = PLUS_STEPS[i];
                 plusButtons[row][i] = addRenderableWidget(new SimpleButton(
@@ -165,6 +177,13 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
                         Component.literal("+" + step),
                         button -> adjust(page * ROWS_PER_PAGE + rowIndex, step)));
             }
+            plusButtons[row][PLUS_STEPS.length] = addRenderableWidget(new SimpleButton(
+                    leftPos + 208 + PLUS_STEPS.length * STEP_W, rowY, STEP_W, 13,
+                    Component.literal("max"),
+                    button -> {
+                        int index = page * ROWS_PER_PAGE + rowIndex;
+                        setQty(index, maxStack(index));
+                    }));
         }
 
         refresh();
@@ -197,18 +216,24 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
             int index = page * ROWS_PER_PAGE + row;
             boolean visible = index < entries;
             buyButtons.get(row).visible = visible;
-            for (int i = 0; i < MINUS_STEPS.length; i++) {
-                minusButtons[row][i].visible = visible;
-                plusButtons[row][i].visible = visible;
+            for (SimpleButton b : minusButtons[row]) {
+                b.visible = visible;
+            }
+            for (SimpleButton b : plusButtons[row]) {
+                b.visible = visible;
             }
             if (visible) {
                 int qty = quantity(index);
                 int max = maxStack(index);
                 buyButtons.get(row).setMessage(Component.literal(priceOf(index, qty) + " ₴"));
+                minusButtons[row][0].active = qty > 1;                       // min
                 for (int i = 0; i < MINUS_STEPS.length; i++) {
-                    minusButtons[row][i].active = qty - MINUS_STEPS[i] >= 1;
+                    minusButtons[row][i + 1].active = qty - MINUS_STEPS[i] >= 1;
+                }
+                for (int i = 0; i < PLUS_STEPS.length; i++) {
                     plusButtons[row][i].active = qty + PLUS_STEPS[i] <= max;
                 }
+                plusButtons[row][PLUS_STEPS.length].active = qty < max;      // max
             }
         }
 
