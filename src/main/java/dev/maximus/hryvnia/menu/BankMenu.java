@@ -74,6 +74,7 @@ public class BankMenu extends AbstractContainerMenu {
         super(ModMenus.BANK, containerId);
         this.villager = villager;
         this.data = data;
+        dev.maximus.hryvnia.event.VillagerFreeze.begin(villager);
 
         for (int i = 0; i < DEPOSIT_SLOTS; i++) {
             this.addSlot(new Slot(depositContainer, i, 8 + i * 18, 30) {
@@ -105,6 +106,7 @@ public class BankMenu extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
+        dev.maximus.hryvnia.event.VillagerFreeze.end(villager);
         this.clearContainer(player, depositContainer);
     }
 

@@ -39,6 +39,9 @@ import java.util.Map;
  */
 public class EmployerMenu extends AbstractContainerMenu {
     public static final int SELL_SLOTS = 5;
+    /** Wider window fits the per-row quantity steppers; inventory is centered. */
+    public static final int WIDTH = 336;
+    public static final int INV_X = (WIDTH - 9 * 18) / 2;
 
     /** One priced line, used both for job rates (count=1) and shop offers. */
     public record PriceEntry(String itemId, int count, int price) {
@@ -76,17 +79,18 @@ public class EmployerMenu extends AbstractContainerMenu {
         this.villager = villager;
         this.data = data;
         this.yourJob = data.yourJob();
+        dev.maximus.hryvnia.event.VillagerFreeze.begin(villager);
 
         for (int i = 0; i < SELL_SLOTS; i++) {
             this.addSlot(new Slot(sellContainer, i, 8 + i * 18, 30));
         }
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                this.addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 140 + row * 18));
+                this.addSlot(new Slot(playerInventory, col + row * 9 + 9, INV_X + col * 18, 140 + row * 18));
             }
         }
         for (int col = 0; col < 9; col++) {
-            this.addSlot(new Slot(playerInventory, col, 8 + col * 18, 198));
+            this.addSlot(new Slot(playerInventory, col, INV_X + col * 18, 198));
         }
     }
 
@@ -106,6 +110,7 @@ public class EmployerMenu extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
+        dev.maximus.hryvnia.event.VillagerFreeze.end(villager);
         this.clearContainer(player, sellContainer);
     }
 

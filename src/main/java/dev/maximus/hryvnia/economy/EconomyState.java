@@ -14,8 +14,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -43,6 +45,9 @@ public class EconomyState {
     /** uuid string -> account. */
     public Map<String, Account> accounts = new LinkedHashMap<>();
 
+    /** Villager UUIDs already considered for the banker roll, so each rolls once ever. */
+    public Set<String> rolledVillagers = new HashSet<>();
+
     private transient Map<String, UUID> byCard = new HashMap<>();
     private transient boolean dirty = false;
     private transient MinecraftServer server;
@@ -66,6 +71,9 @@ public class EconomyState {
         }
         if (state.accounts == null) {
             state.accounts = new LinkedHashMap<>();
+        }
+        if (state.rolledVillagers == null) {
+            state.rolledVillagers = new HashSet<>();
         }
         state.byCard = new HashMap<>();
         for (Map.Entry<String, Account> entry : state.accounts.entrySet()) {
@@ -126,6 +134,18 @@ public class EconomyState {
 
     public MinecraftServer server() {
         return server;
+    }
+
+    /** Marks a villager as considered for the banker roll; true only the first time. */
+    public boolean markVillagerRolled(UUID villager) {
+        if (rolledVillagers == null) {
+            rolledVillagers = new HashSet<>();
+        }
+        boolean added = rolledVillagers.add(villager.toString());
+        if (added) {
+            markDirty();
+        }
+        return added;
     }
 
     /** Overworld in-game day count; a "day" is 24000 ticks of game time. */

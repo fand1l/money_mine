@@ -4,6 +4,7 @@ import dev.maximus.hryvnia.command.HryvniaCommand;
 import dev.maximus.hryvnia.economy.EconomyState;
 import dev.maximus.hryvnia.economy.HryvniaConfig;
 import dev.maximus.hryvnia.event.VillagerEvents;
+import dev.maximus.hryvnia.event.VillagerFreeze;
 import dev.maximus.hryvnia.network.ModPayloads;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -36,6 +37,7 @@ public class HryvniaMod implements ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> EconomyState.unload());
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
+            VillagerFreeze.tick(server);
             if (--saveCountdown <= 0) {
                 saveCountdown = SAVE_INTERVAL_TICKS;
                 EconomyState economy = EconomyState.get();

@@ -4,17 +4,13 @@ import dev.maximus.hryvnia.HryvniaMod;
 import dev.maximus.hryvnia.ModItems;
 import dev.maximus.hryvnia.client.ClientEconomy;
 import dev.maximus.hryvnia.menu.EmployerMenu;
-import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.platform.Window;
 import dev.maximus.hryvnia.network.ModPayloads;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.core.registries.BuiltInRegistries;
-import org.lwjgl.glfw.GLFW;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
@@ -29,20 +25,25 @@ import java.util.Map;
 
 /**
  * Screen for working villagers: hand produce in for pay, hire/quit, and a
- * paginated shop rendered as item icons. Each shop row has a scroll-adjustable
- * quantity (capped at the item's stack size) and a buy button showing the
- * total price. All actions go to the server as EmployerActionPayload.
+ * paginated shop. Each shop row shows an item icon plus a −/+ stepper set
+ * (1/5/10/16/32/64) flanking a buy button that carries the total price; steps
+ * that would exceed the item's stack size (or drop below 1) are disabled.
  */
 public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
     private static final Identifier TEXTURE = HryvniaMod.id("textures/gui/employer_bg.png");
     private static final int ROWS_PER_PAGE = 4;
     private static final int ROW_HEIGHT = 14;
     private static final int FIRST_ROW_Y = 80;
+    private static final int STEP_W = 20;
+    private static final int[] MINUS_STEPS = {64, 32, 16, 10, 5, 1};
+    private static final int[] PLUS_STEPS = {1, 5, 10, 16, 32, 64};
 
     private static final int COLOR_DARK = 0xFF3F3F3F;
     private static final int COLOR_ACCENT = 0xFF2E6B2E;
 
     private final List<SimpleButton> buyButtons = new ArrayList<>();
+    private final SimpleButton[][] minusButtons = new SimpleButton[ROWS_PER_PAGE][MINUS_STEPS.length];
+    private final SimpleButton[][] plusButtons = new SimpleButton[ROWS_PER_PAGE][PLUS_STEPS.length];
     private SimpleButton sellButton;
     private SimpleButton jobButton;
     private SimpleButton payButton;
@@ -62,7 +63,7 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
     private final Map<String, Integer> rateByItem = new HashMap<>();
 
     public EmployerScreen(EmployerMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, 176, 222);
+        super(menu, inventory, title, EmployerMenu.WIDTH, 222);
         this.yourJob = menu.data().yourJob();
         this.inventoryLabelY = -1000; // hidden, the shop list needs the room
 
@@ -99,6 +100,12 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
         return EmployerMenu.priceFor(entry.price(), entry.count(), qty);
     }
 
+    private void adjust(int index, int delta) {
+        int next = Math.max(1, Math.min(maxStack(index), quantity(index) + delta));
+        quantities.put(index, next);
+        refresh();
+    }
+
     @Override
     protected void init() {
         super.init();
@@ -132,15 +139,32 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
 
         for (int row = 0; row < ROWS_PER_PAGE; row++) {
             final int rowIndex = row;
+            int rowY = topPos + FIRST_ROW_Y + row * ROW_HEIGHT;
+
+            for (int i = 0; i < MINUS_STEPS.length; i++) {
+                final int step = MINUS_STEPS[i];
+                minusButtons[row][i] = addRenderableWidget(new SimpleButton(
+                        leftPos + 26 + i * STEP_W, rowY, STEP_W, 13,
+                        Component.literal("-" + step),
+                        button -> adjust(page * ROWS_PER_PAGE + rowIndex, -step)));
+            }
+
             SimpleButton buy = addRenderableWidget(new SimpleButton(
-                    leftPos + 30, topPos + FIRST_ROW_Y + row * ROW_HEIGHT, 138, 13,
-                    Component.empty(),
+                    leftPos + 148, rowY, 58, 13, Component.empty(),
                     button -> {
                         int index = page * ROWS_PER_PAGE + rowIndex;
                         ClientPlayNetworking.send(new ModPayloads.EmployerActionPayload(
                                 ModPayloads.EmployerActionPayload.BUY, index, quantity(index), cardMode));
                     }));
             buyButtons.add(buy);
+
+            for (int i = 0; i < PLUS_STEPS.length; i++) {
+                final int step = PLUS_STEPS[i];
+                plusButtons[row][i] = addRenderableWidget(new SimpleButton(
+                        leftPos + 208 + i * STEP_W, rowY, STEP_W, 13,
+                        Component.literal("+" + step),
+                        button -> adjust(page * ROWS_PER_PAGE + rowIndex, step)));
+            }
         }
 
         refresh();
@@ -160,7 +184,8 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
     }
 
     private void refresh() {
-        int entries = menu.data().shop().size();
+        List<EmployerMenu.PriceEntry> shop = menu.data().shop();
+        int entries = shop.size();
         int pages = Math.max(1, (entries + ROWS_PER_PAGE - 1) / ROWS_PER_PAGE);
         page = Math.max(0, Math.min(page, pages - 1));
         pagePrev.active = page > 0;
@@ -170,11 +195,20 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
 
         for (int row = 0; row < ROWS_PER_PAGE; row++) {
             int index = page * ROWS_PER_PAGE + row;
-            SimpleButton buy = buyButtons.get(row);
-            buy.visible = index < entries;
-            if (buy.visible) {
+            boolean visible = index < entries;
+            buyButtons.get(row).visible = visible;
+            for (int i = 0; i < MINUS_STEPS.length; i++) {
+                minusButtons[row][i].visible = visible;
+                plusButtons[row][i].visible = visible;
+            }
+            if (visible) {
                 int qty = quantity(index);
-                buy.setMessage(Component.literal(qty + "×  " + priceOf(index, qty) + " ₴"));
+                int max = maxStack(index);
+                buyButtons.get(row).setMessage(Component.literal(priceOf(index, qty) + " ₴"));
+                for (int i = 0; i < MINUS_STEPS.length; i++) {
+                    minusButtons[row][i].active = qty - MINUS_STEPS[i] >= 1;
+                    plusButtons[row][i].active = qty + PLUS_STEPS[i] <= max;
+                }
             }
         }
 
@@ -198,38 +232,6 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
             jobButton.active = false;
         }
         sellButton.active = employedHere;
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (scrollY != 0) {
-            int x = leftPos;
-            int y = topPos;
-            List<EmployerMenu.PriceEntry> shop = menu.data().shop();
-            for (int row = 0; row < ROWS_PER_PAGE; row++) {
-                int index = page * ROWS_PER_PAGE + row;
-                if (index >= shop.size()) {
-                    break;
-                }
-                int rowY = y + FIRST_ROW_Y + row * ROW_HEIGHT;
-                if (mouseX >= x + 8 && mouseX <= x + 168 && mouseY >= rowY && mouseY < rowY + ROW_HEIGHT) {
-                    int max = maxStack(index);
-                    int step = isShiftDown() ? max : 1; // Shift jumps straight to a bound.
-                    int delta = (scrollY > 0 ? 1 : -1) * step;
-                    int next = Math.max(1, Math.min(max, quantity(index) + delta));
-                    quantities.put(index, next);
-                    refresh();
-                    return true;
-                }
-            }
-        }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
-    }
-
-    private static boolean isShiftDown() {
-        Window window = Minecraft.getInstance().getWindow();
-        return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT)
-                || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT);
     }
 
     private Component ratesTooltip() {
@@ -322,7 +324,7 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
             graphics.text(font, pageText, x + 133 - font.width(pageText) / 2, y + 67, COLOR_DARK, false);
         }
 
-        // Shop rows: item icon (with quantity badge) plus a price button.
+        // Shop rows: item icon with a quantity badge; steppers/buy are widgets.
         for (int row = 0; row < ROWS_PER_PAGE; row++) {
             int index = page * ROWS_PER_PAGE + row;
             if (index >= shop.size()) {
@@ -339,9 +341,7 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
                 Component hover = itemName(shop.get(index).itemId()).copy()
                         .append(Component.literal("\n"))
                         .append(Component.translatable("hryvnia.gui.buy_tooltip",
-                                String.valueOf(qty), String.valueOf(priceOf(index, qty))))
-                        .append(Component.literal("\n"))
-                        .append(Component.translatable("hryvnia.gui.scroll_hint"));
+                                String.valueOf(qty), String.valueOf(priceOf(index, qty))));
                 graphics.setTooltipForNextFrame(font, hover, mouseX, mouseY);
             }
         }

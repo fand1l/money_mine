@@ -2,6 +2,7 @@ package dev.maximus.hryvnia.event;
 
 import dev.maximus.hryvnia.HryvniaMod;
 import dev.maximus.hryvnia.ModProfessions;
+import dev.maximus.hryvnia.economy.EconomyState;
 import dev.maximus.hryvnia.economy.HryvniaConfig;
 import dev.maximus.hryvnia.menu.BankMenu;
 import dev.maximus.hryvnia.menu.EmployerMenu;
@@ -13,24 +14,20 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
 
-import java.util.Set;
-
 /**
  * Two responsibilities:
- * 1. Naturally spawned jobless adult villagers have a configurable chance to
- *    become bankers. Only first-time spawns with a natural spawn reason roll,
- *    so bred or summoned villagers never become bankers — bankers stay scarce.
+ * 1. Each villager is rolled once (ever) for the banker profession the first
+ *    time it loads: only adult, still-jobless villagers can become bankers,
+ *    which naturally excludes bred babies. The one-time decision is remembered
+ *    in the economy save, so it works for both new and pre-existing villages
+ *    and never re-rolls.
  * 2. Right-clicking villagers opens our own economy menus instead of vanilla
  *    trading, which is what makes emeralds worthless.
  */
 public final class VillagerEvents {
-    /** Spawn reasons that count as "natural" for banker conversion. */
-    private static final Set<String> NATURAL_REASONS = Set.of("NATURAL", "CHUNK_GENERATION", "STRUCTURE", "EVENT");
-
     private VillagerEvents() {
     }
 
@@ -39,16 +36,16 @@ public final class VillagerEvents {
             if (!(entity instanceof Villager villager)) {
                 return;
             }
-            // A fresh spawn fires ENTITY_LOAD exactly once, so no extra
-            // once-per-villager bookkeeping is needed.
-            if (villager.isLoadedFromDisk()) {
+            EconomyState economy = EconomyState.get();
+            if (economy == null) {
+                return;
+            }
+            // Consider each villager exactly once, ever. Marking babies too
+            // means a villager bred as a baby can never later become a banker.
+            if (!economy.markVillagerRolled(villager.getUUID())) {
                 return;
             }
             if (villager.isBaby() || !professionId(villager).equals("minecraft:none")) {
-                return;
-            }
-            EntitySpawnReason reason = villager.spawnReason();
-            if (reason == null || !NATURAL_REASONS.contains(reason.name())) {
                 return;
             }
             if (level.getRandom().nextDouble() < HryvniaConfig.INSTANCE.bankerSpawnChance) {
@@ -104,8 +101,9 @@ public final class VillagerEvents {
         villager.setVillagerData(villager.getVillagerData().withProfession(ModProfessions.bankerHolder()));
         // Villagers with trade XP never lose their profession, locking the banker in.
         villager.setVillagerXp(10);
+        // A floating "Banker" name makes them easy to spot in a village.
         villager.setCustomName(Component.translatable("entity.hryvnia.banker"));
-        villager.setCustomNameVisible(false);
+        villager.setCustomNameVisible(true);
         HryvniaMod.LOGGER.debug("Villager at {} became a banker", villager.blockPosition());
     }
 }
