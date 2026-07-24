@@ -5,6 +5,7 @@ import dev.maximus.hryvnia.ModItems;
 import dev.maximus.hryvnia.client.ClientEconomy;
 import dev.maximus.hryvnia.menu.EmployerMenu;
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.Window;
 import dev.maximus.hryvnia.network.ModPayloads;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
@@ -226,7 +227,7 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
     }
 
     private static boolean isShiftDown() {
-        long window = Minecraft.getInstance().getWindow().getWindow();
+        Window window = Minecraft.getInstance().getWindow();
         return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT)
                 || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT);
     }
