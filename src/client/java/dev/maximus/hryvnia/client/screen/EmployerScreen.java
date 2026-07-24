@@ -146,7 +146,13 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
             buyButtons.get(row).visible = page * ROWS_PER_PAGE + row < entries;
         }
 
-        payButton.setMessage(Component.translatable(cardMode ? "hryvnia.gui.pay_card" : "hryvnia.gui.pay_cash"));
+        if (!menu.data().acceptsCard()) {
+            cardMode = false;
+            payButton.active = false;
+            payButton.setMessage(Component.translatable("hryvnia.gui.only_cash"));
+        } else {
+            payButton.setMessage(Component.translatable(cardMode ? "hryvnia.gui.pay_card" : "hryvnia.gui.pay_cash"));
+        }
 
         boolean employedHere = yourJob.equals(menu.professionId());
         if (yourJob.isEmpty()) {

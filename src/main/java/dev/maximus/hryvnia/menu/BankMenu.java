@@ -5,6 +5,7 @@ import dev.maximus.hryvnia.economy.CardHelper;
 import dev.maximus.hryvnia.economy.CashHelper;
 import dev.maximus.hryvnia.economy.EconomyState;
 import dev.maximus.hryvnia.economy.HryvniaConfig;
+import dev.maximus.hryvnia.economy.Market;
 import dev.maximus.hryvnia.network.ModPayloads;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -33,11 +34,30 @@ import java.util.UUID;
 public class BankMenu extends AbstractContainerMenu {
     public static final int DEPOSIT_SLOTS = 9;
 
-    public record BankData(long balance, String cardNumber, int emeraldScrap) {
+    /** The bank's public conditions, shown in the UI and enforced server-side. */
+    public record BankTerms(int emeraldScrap, long cardPrice, long balanceLimit, long dailyLimit,
+                            float withdrawFeePercent, float transferFeePercent) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, BankTerms> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, BankTerms::emeraldScrap,
+                ByteBufCodecs.VAR_LONG, BankTerms::cardPrice,
+                ByteBufCodecs.VAR_LONG, BankTerms::balanceLimit,
+                ByteBufCodecs.VAR_LONG, BankTerms::dailyLimit,
+                ByteBufCodecs.FLOAT, BankTerms::withdrawFeePercent,
+                ByteBufCodecs.FLOAT, BankTerms::transferFeePercent,
+                BankTerms::new);
+
+        public static BankTerms fromConfig() {
+            HryvniaConfig config = HryvniaConfig.INSTANCE;
+            return new BankTerms(config.emeraldScrapValue, config.cardPrice, config.cardBalanceLimit,
+                    config.transferDailyLimit, (float) config.withdrawFeePercent, (float) config.transferFeePercent);
+        }
+    }
+
+    public record BankData(long balance, String cardNumber, BankTerms terms) {
         public static final StreamCodec<RegistryFriendlyByteBuf, BankData> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_LONG, BankData::balance,
                 ByteBufCodecs.STRING_UTF8, BankData::cardNumber,
-                ByteBufCodecs.VAR_INT, BankData::emeraldScrap,
+                BankTerms.STREAM_CODEC, BankData::terms,
                 BankData::new);
     }
 
@@ -132,19 +152,15 @@ public class BankMenu extends AbstractContainerMenu {
     }
 
     private void deposit(ServerPlayer player, EconomyState economy) {
+        HryvniaConfig config = HryvniaConfig.INSTANCE;
         long total = 0;
         for (int i = 0; i < depositContainer.getContainerSize(); i++) {
             ItemStack stack = depositContainer.getItem(i);
-            if (stack.isEmpty()) {
-                continue;
-            }
             int noteValue = CashHelper.noteValue(stack);
             if (noteValue > 0) {
                 total += (long) noteValue * stack.getCount();
-                depositContainer.setItem(i, ItemStack.EMPTY);
             } else if (stack.getItem() == Items.EMERALD) {
-                total += (long) HryvniaConfig.INSTANCE.emeraldScrapValue * stack.getCount();
-                depositContainer.setItem(i, ItemStack.EMPTY);
+                total += (long) config.emeraldScrapValue * stack.getCount();
             }
         }
         if (total <= 0) {
@@ -152,9 +168,28 @@ public class BankMenu extends AbstractContainerMenu {
             playSound(player, false);
             return;
         }
-        economy.addBalance(player.getUUID(), total);
+        long fee = Market.fee(total, config.depositFeePercent);
+        long credited = total - fee;
+        if (config.cardBalanceLimit > 0 && economy.balance(player.getUUID()) + credited > config.cardBalanceLimit) {
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.deposit_limit",
+                    String.valueOf(config.cardBalanceLimit)));
+            playSound(player, false);
+            return;
+        }
+        for (int i = 0; i < depositContainer.getContainerSize(); i++) {
+            ItemStack stack = depositContainer.getItem(i);
+            if (CashHelper.noteValue(stack) > 0 || stack.getItem() == Items.EMERALD) {
+                depositContainer.setItem(i, ItemStack.EMPTY);
+            }
+        }
+        economy.addBalance(player.getUUID(), credited);
         this.broadcastChanges();
-        player.sendSystemMessage(Component.translatable("hryvnia.msg.deposited", String.valueOf(total)));
+        if (fee > 0) {
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.deposited_fee",
+                    String.valueOf(credited), String.valueOf(fee)));
+        } else {
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.deposited", String.valueOf(credited)));
+        }
         playSound(player, true);
     }
 
@@ -162,14 +197,20 @@ public class BankMenu extends AbstractContainerMenu {
         if (amount <= 0) {
             return;
         }
-        if (economy.balance(player.getUUID()) < amount) {
+        long fee = Market.fee(amount, HryvniaConfig.INSTANCE.withdrawFeePercent);
+        if (economy.balance(player.getUUID()) < amount + fee) {
             player.sendSystemMessage(Component.translatable("hryvnia.msg.not_enough_balance"));
             playSound(player, false);
             return;
         }
-        economy.addBalance(player.getUUID(), -amount);
+        economy.addBalance(player.getUUID(), -(amount + fee));
         CashHelper.giveCash(player, amount);
-        player.sendSystemMessage(Component.translatable("hryvnia.msg.withdrawn", String.valueOf(amount)));
+        if (fee > 0) {
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.withdrawn_fee",
+                    String.valueOf(amount), String.valueOf(fee)));
+        } else {
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.withdrawn", String.valueOf(amount)));
+        }
         playSound(player, true);
     }
 
@@ -179,10 +220,21 @@ public class BankMenu extends AbstractContainerMenu {
             playSound(player, false);
             return;
         }
+        long price = HryvniaConfig.INSTANCE.cardPrice;
+        if (price > 0 && !CashHelper.takeCash(player, price)) {
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.card_price", String.valueOf(price)));
+            playSound(player, false);
+            return;
+        }
         String number = economy.getOrCreateCard(player);
         ItemStack card = CardHelper.createCard(number, player.getUUID(), player.getName().getString());
         player.getInventory().placeItemBackInInventory(card);
-        player.sendSystemMessage(Component.translatable("hryvnia.msg.card_issued", number));
+        if (price > 0) {
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.card_issued_paid",
+                    number, String.valueOf(price)));
+        } else {
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.card_issued", number));
+        }
         playSound(player, true);
     }
 
@@ -196,11 +248,16 @@ public class BankMenu extends AbstractContainerMenu {
             playSound(player, false);
             return;
         }
-        EconomyState.TransferResult result = economy.transfer(player, number, amount);
-        switch (result) {
+        EconomyState.TransferOutcome outcome = economy.transfer(player, number, amount);
+        switch (outcome.result()) {
             case OK -> {
-                player.sendSystemMessage(Component.translatable("hryvnia.msg.transfer_sent",
-                        String.valueOf(amount), number));
+                if (outcome.fee() > 0) {
+                    player.sendSystemMessage(Component.translatable("hryvnia.msg.transfer_sent_fee",
+                            String.valueOf(amount), number, String.valueOf(outcome.fee())));
+                } else {
+                    player.sendSystemMessage(Component.translatable("hryvnia.msg.transfer_sent",
+                            String.valueOf(amount), number));
+                }
                 UUID recipient = economy.ownerOfCard(number);
                 if (recipient != null && economy.server() != null) {
                     ServerPlayer online = economy.server().getPlayerList().getPlayer(recipient);
@@ -223,6 +280,16 @@ public class BankMenu extends AbstractContainerMenu {
                 player.sendSystemMessage(Component.translatable("hryvnia.msg.transfer_self"));
                 playSound(player, false);
             }
+            case DAILY_LIMIT -> {
+                player.sendSystemMessage(Component.translatable("hryvnia.msg.transfer_limit",
+                        String.valueOf(HryvniaConfig.INSTANCE.transferDailyLimit)));
+                playSound(player, false);
+            }
+            case RECIPIENT_FULL -> {
+                player.sendSystemMessage(Component.translatable("hryvnia.msg.transfer_recipient_full",
+                        String.valueOf(HryvniaConfig.INSTANCE.cardBalanceLimit)));
+                playSound(player, false);
+            }
         }
     }
 
@@ -242,7 +309,7 @@ public class BankMenu extends AbstractContainerMenu {
         }
         EconomyState.Account account = economy.account(player);
         BankData data = new BankData(account.balance, account.card != null ? account.card : "",
-                HryvniaConfig.INSTANCE.emeraldScrapValue);
+                BankTerms.fromConfig());
 
         player.openMenu(new ExtendedMenuProvider<BankData>() {
             @Override

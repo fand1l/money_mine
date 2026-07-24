@@ -5,6 +5,7 @@ import dev.maximus.hryvnia.economy.CardHelper;
 import dev.maximus.hryvnia.economy.CashHelper;
 import dev.maximus.hryvnia.economy.EconomyState;
 import dev.maximus.hryvnia.economy.HryvniaConfig;
+import dev.maximus.hryvnia.economy.Market;
 import dev.maximus.hryvnia.network.ModPayloads;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -48,12 +49,14 @@ public class EmployerMenu extends AbstractContainerMenu {
                 PriceEntry::new);
     }
 
-    public record EmployerData(String professionId, String yourJob, List<PriceEntry> rates, List<PriceEntry> shop) {
+    public record EmployerData(String professionId, String yourJob, List<PriceEntry> rates, List<PriceEntry> shop,
+                               boolean acceptsCard) {
         public static final StreamCodec<RegistryFriendlyByteBuf, EmployerData> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, EmployerData::professionId,
                 ByteBufCodecs.STRING_UTF8, EmployerData::yourJob,
                 PriceEntry.STREAM_CODEC.apply(ByteBufCodecs.list()), EmployerData::rates,
                 PriceEntry.STREAM_CODEC.apply(ByteBufCodecs.list()), EmployerData::shop,
+                ByteBufCodecs.BOOL, EmployerData::acceptsCard,
                 EmployerData::new);
     }
 
@@ -183,6 +186,11 @@ public class EmployerMenu extends AbstractContainerMenu {
         if (professionEconomy == null) {
             return;
         }
+        if (card && !data.acceptsCard()) {
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.only_cash"));
+            playSound(player, false);
+            return;
+        }
         if (card && !CardHelper.hasOwnCard(player)) {
             player.sendSystemMessage(Component.translatable("hryvnia.msg.no_card"));
             playSound(player, false);
@@ -205,7 +213,12 @@ public class EmployerMenu extends AbstractContainerMenu {
             playSound(player, false);
             return;
         }
-        if (card) {
+        long cap = HryvniaConfig.INSTANCE.cardBalanceLimit;
+        if (card && cap > 0 && economy.balance(player.getUUID()) + earned > cap) {
+            // The card cannot hold the wages: fall back to cash.
+            CashHelper.giveCash(player, earned);
+            player.sendSystemMessage(Component.translatable("hryvnia.msg.card_limit_cash", String.valueOf(cap)));
+        } else if (card) {
             economy.addBalance(player.getUUID(), earned);
         } else {
             CashHelper.giveCash(player, earned);
@@ -226,17 +239,23 @@ public class EmployerMenu extends AbstractContainerMenu {
     }
 
     private void buy(ServerPlayer player, EconomyState economy, int index, boolean card) {
-        HryvniaConfig.ProfessionEconomy professionEconomy = HryvniaConfig.INSTANCE.professionEconomy(professionId());
-        if (professionEconomy == null || index < 0 || index >= professionEconomy.shop.size()) {
+        // Charge from the menu's own opening data: it carries today's rolled
+        // prices, so the player pays exactly what the screen showed.
+        if (index < 0 || index >= data.shop().size()) {
             return;
         }
-        HryvniaConfig.ShopEntry entry = professionEconomy.shop.get(index);
-        Item item = itemById(entry.item);
+        PriceEntry entry = data.shop().get(index);
+        Item item = itemById(entry.itemId());
         if (item == null) {
             return;
         }
-        long price = entry.price;
+        long price = entry.price();
         if (card) {
+            if (!data.acceptsCard()) {
+                player.sendSystemMessage(Component.translatable("hryvnia.msg.only_cash"));
+                playSound(player, false);
+                return;
+            }
             if (!CardHelper.hasOwnCard(player)) {
                 player.sendSystemMessage(Component.translatable("hryvnia.msg.no_card"));
                 playSound(player, false);
@@ -255,7 +274,7 @@ public class EmployerMenu extends AbstractContainerMenu {
                 return;
             }
         }
-        ItemStack bought = new ItemStack(item, Math.max(1, entry.count));
+        ItemStack bought = new ItemStack(item, Math.max(1, entry.count()));
         player.getInventory().placeItemBackInInventory(bought);
         player.sendSystemMessage(Component.translatable("hryvnia.msg.bought",
                 Component.translatable(item.getDescriptionId()), String.valueOf(price)));
@@ -303,10 +322,12 @@ public class EmployerMenu extends AbstractContainerMenu {
             rates.add(new PriceEntry(entry.getKey(), 1, entry.getValue()));
         }
         List<PriceEntry> shop = new ArrayList<>();
+        int index = 0;
         for (HryvniaConfig.ShopEntry entry : professionEconomy.shop) {
-            shop.add(new PriceEntry(entry.item, entry.count, entry.price));
+            shop.add(new PriceEntry(entry.item, entry.count,
+                    Market.rollPrice(entry, villager.getUUID(), index++)));
         }
-        EmployerData data = new EmployerData(professionId, job, rates, shop);
+        EmployerData data = new EmployerData(professionId, job, rates, shop, Market.acceptsCard(villager.getUUID()));
 
         player.openMenu(new ExtendedMenuProvider<EmployerData>() {
             @Override

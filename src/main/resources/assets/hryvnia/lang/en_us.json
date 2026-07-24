@@ -64,7 +64,21 @@
   "hryvnia.gui.deposit_estimate": "Deposit (≈ ₴%s):",
   "hryvnia.gui.wallet": "Cash: ₴%s",
   "hryvnia.gui.your_card": "Your card: %s",
-  "hryvnia.gui.no_card_yet": "No card yet — click to get one",
+  "hryvnia.gui.no_card_yet": "No card yet. Price: ₴%s in cash",
   "hryvnia.msg.banker_created": "Nearest villager is now a banker.",
-  "hryvnia.msg.no_villager_nearby": "No adult villager nearby."
+  "hryvnia.msg.no_villager_nearby": "No adult villager nearby.",
+  "hryvnia.gui.only_cash": "Cash only",
+  "hryvnia.gui.fee_tooltip": "Fee: %s%%",
+  "hryvnia.gui.transfer_tooltip": "Fee: %s%%. Limit: ₴%s per player per day.",
+  "hryvnia.gui.balance_limit": "Balance: %s / %s ₴",
+  "hryvnia.msg.only_cash": "This villager takes cash only (mumbles something about taxes).",
+  "hryvnia.msg.card_limit_cash": "Card limit is ₴%s — wages paid in cash.",
+  "hryvnia.msg.deposit_limit": "Card limit is ₴%s — that much won't fit.",
+  "hryvnia.msg.card_price": "A card costs ₴%s in cash — not enough.",
+  "hryvnia.msg.card_issued_paid": "Card issued: %s (paid ₴%s).",
+  "hryvnia.msg.withdrawn_fee": "Withdrawn: ₴%s (fee ₴%s).",
+  "hryvnia.msg.deposited_fee": "Deposited: ₴%s (fee ₴%s).",
+  "hryvnia.msg.transfer_sent_fee": "Sent ₴%s to card %s (fee ₴%s).",
+  "hryvnia.msg.transfer_limit": "Daily transfer limit to this player reached (₴%s/day).",
+  "hryvnia.msg.transfer_recipient_full": "Recipient's card is full (limit ₴%s)."
 }

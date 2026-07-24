@@ -64,7 +64,21 @@
   "hryvnia.gui.deposit_estimate": "Депозит (≈ %s ₴):",
   "hryvnia.gui.wallet": "Готівка: %s ₴",
   "hryvnia.gui.your_card": "Ваша картка: %s",
-  "hryvnia.gui.no_card_yet": "Картки ще немає — натисніть, щоб отримати",
+  "hryvnia.gui.no_card_yet": "Картки ще немає. Ціна: %s ₴ готівкою",
   "hryvnia.msg.banker_created": "Найближчого селянина перетворено на банкіра.",
-  "hryvnia.msg.no_villager_nearby": "Поблизу немає дорослого селянина."
+  "hryvnia.msg.no_villager_nearby": "Поблизу немає дорослого селянина.",
+  "hryvnia.gui.only_cash": "Тільки готівка",
+  "hryvnia.gui.fee_tooltip": "Комісія: %s%%",
+  "hryvnia.gui.transfer_tooltip": "Комісія: %s%%. Ліміт: %s ₴ на день одному гравцеві.",
+  "hryvnia.gui.balance_limit": "Баланс: %s / %s ₴",
+  "hryvnia.msg.only_cash": "Цей селянин приймає лише готівку (бурмоче щось про податки).",
+  "hryvnia.msg.card_limit_cash": "Ліміт картки %s ₴ — зарплату видано готівкою.",
+  "hryvnia.msg.deposit_limit": "Ліміт картки — %s ₴. Стільки покласти не вийде.",
+  "hryvnia.msg.card_price": "Картка коштує %s ₴ готівкою — не вистачає.",
+  "hryvnia.msg.card_issued_paid": "Видано картку %s (сплачено %s ₴).",
+  "hryvnia.msg.withdrawn_fee": "Знято готівкою: %s ₴ (комісія %s ₴).",
+  "hryvnia.msg.deposited_fee": "Зараховано: %s ₴ (комісія %s ₴).",
+  "hryvnia.msg.transfer_sent_fee": "Переказ %s ₴ на картку %s виконано (комісія %s ₴).",
+  "hryvnia.msg.transfer_limit": "Денний ліміт переказів цьому гравцеві вичерпано (%s ₴/день).",
+  "hryvnia.msg.transfer_recipient_full": "Картка отримувача переповнена (ліміт %s ₴)."
 }

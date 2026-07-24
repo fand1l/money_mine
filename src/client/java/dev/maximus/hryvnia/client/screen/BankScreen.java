@@ -51,7 +51,9 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         withdrawAmount.setMaxLength(10);
         addRenderableWidget(withdrawAmount);
 
-        addRenderableWidget(new SimpleButton(leftPos + 70, topPos + 65, 46, 16,
+        BankMenu.BankTerms terms = menu.data().terms();
+
+        SimpleButton withdrawButton = addRenderableWidget(new SimpleButton(leftPos + 70, topPos + 65, 46, 16,
                 Component.translatable("hryvnia.gui.withdraw"),
                 button -> {
                     long amount = parseAmount(withdrawAmount.getValue());
@@ -60,6 +62,8 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                                 ModPayloads.BankActionPayload.WITHDRAW, amount, ""));
                     }
                 }));
+        withdrawButton.setTooltip(Tooltip.create(
+                Component.translatable("hryvnia.gui.fee_tooltip", formatPercent(terms.withdrawFeePercent()))));
 
         SimpleButton cardButton = addRenderableWidget(new SimpleButton(leftPos + 120, topPos + 65, 48, 16,
                 Component.translatable("hryvnia.gui.get_card"),
@@ -67,7 +71,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                         ModPayloads.BankActionPayload.CARD, 0, ""))));
         String ownCard = menu.data().cardNumber();
         cardButton.setTooltip(Tooltip.create(ownCard.isEmpty()
-                ? Component.translatable("hryvnia.gui.no_card_yet")
+                ? Component.translatable("hryvnia.gui.no_card_yet", String.valueOf(terms.cardPrice()))
                 : Component.translatable("hryvnia.gui.your_card", ownCard)));
 
         transferCard = new EditBox(font, leftPos + 8, topPos + 96, 160, 14,
@@ -80,7 +84,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         transferAmount.setMaxLength(10);
         addRenderableWidget(transferAmount);
 
-        addRenderableWidget(new SimpleButton(leftPos + 70, topPos + 113, 98, 16,
+        SimpleButton transferButton = addRenderableWidget(new SimpleButton(leftPos + 70, topPos + 113, 98, 16,
                 Component.translatable("hryvnia.gui.transfer"),
                 button -> {
                     long amount = parseAmount(transferAmount.getValue());
@@ -90,6 +94,9 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                                 ModPayloads.BankActionPayload.TRANSFER, amount, card));
                     }
                 }));
+        transferButton.setTooltip(Tooltip.create(
+                Component.translatable("hryvnia.gui.transfer_tooltip",
+                        formatPercent(terms.transferFeePercent()), String.valueOf(terms.dailyLimit()))));
     }
 
     private static long parseAmount(String text) {
@@ -98,6 +105,11 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         } catch (NumberFormatException e) {
             return 0;
         }
+    }
+
+    /** "1.0" -> "1", "2.5" stays "2.5". */
+    private static String formatPercent(float percent) {
+        return percent == Math.floor(percent) ? String.valueOf((int) percent) : String.valueOf(percent);
     }
 
     /** Value of everything currently sitting in the deposit slots. */
@@ -112,7 +124,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             if (value != null) {
                 total += (long) value * stack.getCount();
             } else if (stack.getItem() == Items.EMERALD) {
-                total += (long) menu.data().emeraldScrap() * stack.getCount();
+                total += (long) menu.data().terms().emeraldScrap() * stack.getCount();
             }
         }
         return total;
@@ -137,7 +149,11 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                 : Component.translatable("hryvnia.gui.deposit_hint").getString();
         graphics.text(font, depositHeader, x + 8, y + 18, estimate > 0 ? COLOR_ACCENT : COLOR_DARK, false);
 
-        String balance = Component.translatable("hryvnia.gui.balance", String.valueOf(ClientEconomy.balance)).getString();
+        long limit = menu.data().terms().balanceLimit();
+        String balance = limit > 0
+                ? Component.translatable("hryvnia.gui.balance_limit",
+                        String.valueOf(ClientEconomy.balance), String.valueOf(limit)).getString()
+                : Component.translatable("hryvnia.gui.balance", String.valueOf(ClientEconomy.balance)).getString();
         graphics.text(font, balance, x + 8, y + 51, COLOR_ACCENT, false);
 
         graphics.text(font, Component.translatable("hryvnia.gui.transfer_hint").getString(), x + 8, y + 86, COLOR_DARK, false);

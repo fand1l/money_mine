@@ -28,6 +28,20 @@ public class HryvniaConfig {
     public double bankerSpawnChance = 0.15;
     /** How many hryvnias a banker pays for one emerald handed in as scrap. */
     public int emeraldScrapValue = 5;
+    /** Percent of working villagers that accept card payments (the rest dodge taxes). */
+    public int cardAcceptancePercent = 90;
+    /** Exponential price bias k: higher = expensive end of the range even more likely. */
+    public double priceBias = 2.0;
+    /** One-time price of a bank card, paid in cash. */
+    public long cardPrice = 10000;
+    /** Maximum balance a card can hold. 0 disables the limit. */
+    public long cardBalanceLimit = 100000;
+    /** Max hryvnias one player can wire to another per real-world day. 0 disables. */
+    public long transferDailyLimit = 40000;
+    /** Fee percentages for banker operations. */
+    public double withdrawFeePercent = 1.0;
+    public double depositFeePercent = 0.0;
+    public double transferFeePercent = 2.0;
 
     /** profession id (e.g. "minecraft:butcher") -> economy for that profession. */
     public Map<String, ProfessionEconomy> professions = new LinkedHashMap<>();
@@ -42,7 +56,11 @@ public class HryvniaConfig {
     public static class ShopEntry {
         public String item;
         public int count;
+        /** Flat price, used when no valid priceMin/priceMax range is set. */
         public int price;
+        /** Optional daily price range; cheap prices are exponentially rarer. */
+        public int priceMin;
+        public int priceMax;
 
         public ShopEntry() {
         }
@@ -101,7 +119,11 @@ public class HryvniaConfig {
     }
 
     private static void offer(ProfessionEconomy e, String item, int count, int price) {
-        e.shop.add(new ShopEntry(item, count, price));
+        ShopEntry entry = new ShopEntry(item, count, price);
+        // Default shops get a ±20-25% daily range around the base price.
+        entry.priceMin = Math.max(1, (int) Math.round(price * 0.8));
+        entry.priceMax = Math.max(entry.priceMin, (int) Math.round(price * 1.25));
+        e.shop.add(entry);
     }
 
     private static Map<String, ProfessionEconomy> createDefaultProfessions() {

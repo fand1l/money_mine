@@ -34,6 +34,10 @@ public class EconomyState {
         public String card = null;
         public String name = "";
         public String job = null;
+        /** Real-world date the daily transfer counters below belong to. */
+        public String transferDay = null;
+        /** recipient uuid -> hryvnias already wired to them today. */
+        public Map<String, Long> sentToday = new HashMap<>();
     }
 
     /** uuid string -> account. */
@@ -201,27 +205,56 @@ public class EconomyState {
         OK,
         NO_SUCH_CARD,
         NOT_ENOUGH_MONEY,
-        SELF
+        SELF,
+        DAILY_LIMIT,
+        RECIPIENT_FULL
     }
 
-    public TransferResult transfer(ServerPlayer from, String cardNumber, long amount) {
+    public record TransferOutcome(TransferResult result, long fee) {
+    }
+
+    /**
+     * Wires money between players. The sender pays the transfer fee on top;
+     * the daily limit is tracked per recipient *player*, not per card, so
+     * re-issuing cards does not reset it.
+     */
+    public TransferOutcome transfer(ServerPlayer from, String cardNumber, long amount) {
+        HryvniaConfig config = HryvniaConfig.INSTANCE;
         UUID to = ownerOfCard(cardNumber);
         if (to == null) {
-            return TransferResult.NO_SUCH_CARD;
+            return new TransferOutcome(TransferResult.NO_SUCH_CARD, 0);
         }
         if (to.equals(from.getUUID())) {
-            return TransferResult.SELF;
+            return new TransferOutcome(TransferResult.SELF, 0);
         }
+        long fee = Market.fee(amount, config.transferFeePercent);
         Account sender = account(from);
-        if (sender.balance < amount) {
-            return TransferResult.NOT_ENOUGH_MONEY;
+        if (sender.balance < amount + fee) {
+            return new TransferOutcome(TransferResult.NOT_ENOUGH_MONEY, fee);
         }
-        sender.balance -= amount;
-        account(to).balance += amount;
+        Account recipient = account(to);
+        if (config.cardBalanceLimit > 0 && recipient.balance + amount > config.cardBalanceLimit) {
+            return new TransferOutcome(TransferResult.RECIPIENT_FULL, fee);
+        }
+        String today = Market.today();
+        if (!today.equals(sender.transferDay)) {
+            sender.transferDay = today;
+            sender.sentToday = new HashMap<>();
+        }
+        if (sender.sentToday == null) {
+            sender.sentToday = new HashMap<>();
+        }
+        long alreadySent = sender.sentToday.getOrDefault(to.toString(), 0L);
+        if (config.transferDailyLimit > 0 && alreadySent + amount > config.transferDailyLimit) {
+            return new TransferOutcome(TransferResult.DAILY_LIMIT, fee);
+        }
+        sender.sentToday.put(to.toString(), alreadySent + amount);
+        sender.balance -= amount + fee;
+        recipient.balance += amount;
         markDirty();
         syncBalance(from.getUUID());
         syncBalance(to);
-        return TransferResult.OK;
+        return new TransferOutcome(TransferResult.OK, fee);
     }
 
     public String nameOf(UUID uuid) {
