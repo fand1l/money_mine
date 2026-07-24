@@ -4,13 +4,16 @@ import dev.maximus.hryvnia.HryvniaMod;
 import dev.maximus.hryvnia.ModItems;
 import dev.maximus.hryvnia.client.ClientEconomy;
 import dev.maximus.hryvnia.menu.EmployerMenu;
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.maximus.hryvnia.network.ModPayloads;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.core.registries.BuiltInRegistries;
+import org.lwjgl.glfw.GLFW;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
@@ -210,7 +213,7 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
                 int rowY = y + FIRST_ROW_Y + row * ROW_HEIGHT;
                 if (mouseX >= x + 8 && mouseX <= x + 168 && mouseY >= rowY && mouseY < rowY + ROW_HEIGHT) {
                     int max = maxStack(index);
-                    int step = hasShiftDown() ? max : 1; // Shift jumps straight to a bound.
+                    int step = isShiftDown() ? max : 1; // Shift jumps straight to a bound.
                     int delta = (scrollY > 0 ? 1 : -1) * step;
                     int next = Math.max(1, Math.min(max, quantity(index) + delta));
                     quantities.put(index, next);
@@ -220,6 +223,12 @@ public class EmployerScreen extends AbstractContainerScreen<EmployerMenu> {
             }
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    private static boolean isShiftDown() {
+        long window = Minecraft.getInstance().getWindow().getWindow();
+        return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT)
+                || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT);
     }
 
     private Component ratesTooltip() {
