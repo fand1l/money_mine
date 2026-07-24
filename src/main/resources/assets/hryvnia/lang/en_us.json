@@ -69,7 +69,7 @@
   "hryvnia.msg.no_villager_nearby": "No adult villager nearby.",
   "hryvnia.gui.only_cash": "Cash only",
   "hryvnia.gui.fee_tooltip": "Fee: %s%%",
-  "hryvnia.gui.transfer_tooltip": "Fee: %s%%. Limit: ₴%s per player per day.",
+  "hryvnia.gui.transfer_tooltip": "Fee: %s%%. Limit: ₴%s per game day per player.",
   "hryvnia.gui.balance_limit": "Balance: %s / %s ₴",
   "hryvnia.msg.only_cash": "This villager takes cash only (mumbles something about taxes).",
   "hryvnia.msg.card_limit_cash": "Card limit is ₴%s — wages paid in cash.",
@@ -79,6 +79,9 @@
   "hryvnia.msg.withdrawn_fee": "Withdrawn: ₴%s (fee ₴%s).",
   "hryvnia.msg.deposited_fee": "Deposited: ₴%s (fee ₴%s).",
   "hryvnia.msg.transfer_sent_fee": "Sent ₴%s to card %s (fee ₴%s).",
-  "hryvnia.msg.transfer_limit": "Daily transfer limit to this player reached (₴%s/day).",
-  "hryvnia.msg.transfer_recipient_full": "Recipient's card is full (limit ₴%s)."
+  "hryvnia.msg.transfer_limit": "Transfer limit to this player reached for this game day (₴%s).",
+  "hryvnia.msg.transfer_recipient_full": "Recipient's card is full (limit ₴%s).",
+  "hryvnia.gui.buy_tooltip": "Buy %s for ₴%s",
+  "hryvnia.gui.scroll_hint": "Scroll to change amount (Shift = max/min)",
+  "hryvnia.msg.bought_qty": "Bought %s× %s for ₴%s"
 }

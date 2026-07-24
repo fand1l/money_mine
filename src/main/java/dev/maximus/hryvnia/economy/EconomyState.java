@@ -34,9 +34,9 @@ public class EconomyState {
         public String card = null;
         public String name = "";
         public String job = null;
-        /** Real-world date the daily transfer counters below belong to. */
-        public String transferDay = null;
-        /** recipient uuid -> hryvnias already wired to them today. */
+        /** In-game day (overworld gameTime / 24000) the counters below belong to. */
+        public long transferGameDay = -1;
+        /** recipient uuid -> hryvnias already wired to them this in-game day. */
         public Map<String, Long> sentToday = new HashMap<>();
     }
 
@@ -126,6 +126,11 @@ public class EconomyState {
 
     public MinecraftServer server() {
         return server;
+    }
+
+    /** Overworld in-game day count; a "day" is 24000 ticks of game time. */
+    private long currentGameDay() {
+        return server != null ? server.overworld().getGameTime() / 24000L : 0;
     }
 
     public long balance(UUID uuid) {
@@ -236,12 +241,9 @@ public class EconomyState {
         if (config.cardBalanceLimit > 0 && recipient.balance + amount > config.cardBalanceLimit) {
             return new TransferOutcome(TransferResult.RECIPIENT_FULL, fee);
         }
-        String today = Market.today();
-        if (!today.equals(sender.transferDay)) {
-            sender.transferDay = today;
-            sender.sentToday = new HashMap<>();
-        }
-        if (sender.sentToday == null) {
+        long gameDay = currentGameDay();
+        if (sender.transferGameDay != gameDay || sender.sentToday == null) {
+            sender.transferGameDay = gameDay;
             sender.sentToday = new HashMap<>();
         }
         long alreadySent = sender.sentToday.getOrDefault(to.toString(), 0L);

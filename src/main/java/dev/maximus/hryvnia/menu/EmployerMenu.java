@@ -134,7 +134,7 @@ public class EmployerMenu extends AbstractContainerMenu {
 
     // --- server-side action handling ------------------------------------
 
-    public void handleAction(ServerPlayer player, int action, int index, boolean card) {
+    public void handleAction(ServerPlayer player, int action, int index, int qty, boolean card) {
         EconomyState economy = EconomyState.get();
         if (economy == null) {
             return;
@@ -143,10 +143,16 @@ public class EmployerMenu extends AbstractContainerMenu {
             case ModPayloads.EmployerActionPayload.HIRE -> hire(player, economy);
             case ModPayloads.EmployerActionPayload.QUIT -> quit(player, economy);
             case ModPayloads.EmployerActionPayload.SELL -> sell(player, economy, card);
-            case ModPayloads.EmployerActionPayload.BUY -> buy(player, economy, index, card);
+            case ModPayloads.EmployerActionPayload.BUY -> buy(player, economy, index, qty, card);
             default -> {
             }
         }
+    }
+
+    /** Total cost of {@code qty} items when the shop lists {@code packCount} for {@code packPrice}. */
+    public static long priceFor(int packPrice, int packCount, int qty) {
+        int count = Math.max(1, packCount);
+        return (long) Math.ceil((double) packPrice * qty / count);
     }
 
     private void hire(ServerPlayer player, EconomyState economy) {
@@ -238,7 +244,7 @@ public class EmployerMenu extends AbstractContainerMenu {
         return null;
     }
 
-    private void buy(ServerPlayer player, EconomyState economy, int index, boolean card) {
+    private void buy(ServerPlayer player, EconomyState economy, int index, int requestedQty, boolean card) {
         // Charge from the menu's own opening data: it carries today's rolled
         // prices, so the player pays exactly what the screen showed.
         if (index < 0 || index >= data.shop().size()) {
@@ -249,7 +255,11 @@ public class EmployerMenu extends AbstractContainerMenu {
         if (item == null) {
             return;
         }
-        long price = entry.price();
+        // Quantity is capped at one full stack of that item (bread 64, ender
+        // pearl 16, pickaxe 1), so a single purchase never overflows a slot.
+        int maxStack = new ItemStack(item).getMaxStackSize();
+        int qty = Math.clamp(requestedQty, 1, maxStack);
+        long price = priceFor(entry.price(), entry.count(), qty);
         if (card) {
             if (!data.acceptsCard()) {
                 player.sendSystemMessage(Component.translatable("hryvnia.msg.only_cash"));
@@ -274,10 +284,10 @@ public class EmployerMenu extends AbstractContainerMenu {
                 return;
             }
         }
-        ItemStack bought = new ItemStack(item, Math.max(1, entry.count()));
+        ItemStack bought = new ItemStack(item, qty);
         player.getInventory().placeItemBackInInventory(bought);
-        player.sendSystemMessage(Component.translatable("hryvnia.msg.bought",
-                Component.translatable(item.getDescriptionId()), String.valueOf(price)));
+        player.sendSystemMessage(Component.translatable("hryvnia.msg.bought_qty",
+                String.valueOf(qty), Component.translatable(item.getDescriptionId()), String.valueOf(price)));
         playSound(player, true);
     }
 

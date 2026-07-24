@@ -16,7 +16,7 @@ public final class ModPayloads {
     }
 
     /** Client -> server: actions inside the employer (job/shop) menu. */
-    public record EmployerActionPayload(int action, int index, boolean card) implements CustomPacketPayload {
+    public record EmployerActionPayload(int action, int index, int qty, boolean card) implements CustomPacketPayload {
         public static final int HIRE = 0;
         public static final int QUIT = 1;
         public static final int SELL = 2;
@@ -26,6 +26,7 @@ public final class ModPayloads {
         public static final StreamCodec<RegistryFriendlyByteBuf, EmployerActionPayload> CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, EmployerActionPayload::action,
                 ByteBufCodecs.VAR_INT, EmployerActionPayload::index,
+                ByteBufCodecs.VAR_INT, EmployerActionPayload::qty,
                 ByteBufCodecs.BOOL, EmployerActionPayload::card,
                 EmployerActionPayload::new);
 
@@ -75,7 +76,7 @@ public final class ModPayloads {
         ServerPlayNetworking.registerGlobalReceiver(EmployerActionPayload.TYPE, (payload, context) -> {
             ServerPlayer player = context.player();
             if (player.containerMenu instanceof EmployerMenu menu && menu.stillValid(player)) {
-                menu.handleAction(player, payload.action(), payload.index(), payload.card());
+                menu.handleAction(player, payload.action(), payload.index(), payload.qty(), payload.card());
             }
         });
 

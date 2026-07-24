@@ -21,13 +21,9 @@ public final class Market {
         return Math.floorMod(villagerId.hashCode(), 100) < percent;
     }
 
+    /** Real-world day, used to reroll shop prices once per day. */
     public static long dayNumber() {
         return LocalDate.now().toEpochDay();
-    }
-
-    /** Today's date, used as the reset key for daily transfer limits. */
-    public static String today() {
-        return LocalDate.now().toString();
     }
 
     /**

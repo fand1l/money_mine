@@ -69,7 +69,7 @@
   "hryvnia.msg.no_villager_nearby": "Поблизу немає дорослого селянина.",
   "hryvnia.gui.only_cash": "Тільки готівка",
   "hryvnia.gui.fee_tooltip": "Комісія: %s%%",
-  "hryvnia.gui.transfer_tooltip": "Комісія: %s%%. Ліміт: %s ₴ на день одному гравцеві.",
+  "hryvnia.gui.transfer_tooltip": "Комісія: %s%%. Ліміт: %s ₴ на ігровий день одному гравцеві.",
   "hryvnia.gui.balance_limit": "Баланс: %s / %s ₴",
   "hryvnia.msg.only_cash": "Цей селянин приймає лише готівку (бурмоче щось про податки).",
   "hryvnia.msg.card_limit_cash": "Ліміт картки %s ₴ — зарплату видано готівкою.",
@@ -79,6 +79,9 @@
   "hryvnia.msg.withdrawn_fee": "Знято готівкою: %s ₴ (комісія %s ₴).",
   "hryvnia.msg.deposited_fee": "Зараховано: %s ₴ (комісія %s ₴).",
   "hryvnia.msg.transfer_sent_fee": "Переказ %s ₴ на картку %s виконано (комісія %s ₴).",
-  "hryvnia.msg.transfer_limit": "Денний ліміт переказів цьому гравцеві вичерпано (%s ₴/день).",
-  "hryvnia.msg.transfer_recipient_full": "Картка отримувача переповнена (ліміт %s ₴)."
+  "hryvnia.msg.transfer_limit": "Ліміт переказів цьому гравцеві на цей ігровий день вичерпано (%s ₴).",
+  "hryvnia.msg.transfer_recipient_full": "Картка отримувача переповнена (ліміт %s ₴).",
+  "hryvnia.gui.buy_tooltip": "Купити: %s шт. за %s ₴",
+  "hryvnia.gui.scroll_hint": "Коліщатко — кількість (Shift — макс/мін)",
+  "hryvnia.msg.bought_qty": "Куплено: %s× %s за %s ₴"
 }
